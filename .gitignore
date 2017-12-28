@@ -1,1 +1,7 @@
 __pycache__
+./models/train
+./models/text
+./corpus/embedding*.tsv
+./corpus/vocab*
+./corpus/*.txt.ids*
+
