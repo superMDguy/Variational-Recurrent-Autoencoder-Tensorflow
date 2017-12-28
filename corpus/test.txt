@@ -1,0 +1,19 @@
+--2017-12-28 09:47:14--  https://raw.githubusercontent.com/Chung-I/Variational-Recurrent-Autoencoder-Tensorflow/master/corpus/test.txt.in
+Resolving raw.githubusercontent.com (raw.githubusercontent.com)... 151.101.0.133, 151.101.64.133, 151.101.128.133, ...
+Connecting to raw.githubusercontent.com (raw.githubusercontent.com)|151.101.0.133|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 449945 (439K) [text/plain]
+Saving to: ‘test.txt.in’
+
+     0K .......... .......... .......... .......... .......... 11%  353K 1s
+    50K .......... .......... .......... .......... .......... 22%  531K 1s
+   100K .......... .......... .......... .......... .......... 34% 1.56M 1s
+   150K .......... .......... .......... .......... .......... 45%  620K 0s
+   200K .......... .......... .......... .......... .......... 56%  622K 0s
+   250K .......... .......... .......... .......... .......... 68%  621K 0s
+   300K .......... .......... .......... .......... .......... 79%  621K 0s
+   350K .......... .......... .......... .......... .......... 91%  459K 0s
+   400K .......... .......... .......... .........            100% 1.01M=0.7s
+
+2017-12-28 09:47:15 (597 KB/s) - ‘test.txt.in’ saved [449945/449945]
+
