@@ -139,10 +139,10 @@ def create_model(session, config, forward_only):
     session.run(tf.global_variables_initializer())
   return model
 
-def load_embeddings(word_index, vocab_size):
-  EMBEDDING_DIM = 300
+def load_embeddings(word_index, config):
+  EMBEDDING_DIM = config.size
   embeddings_index = {}
-  f = open(os.path.expanduser('~/Code/dl/datasets/glove.42B.300d.txt'))
+  f = open(os.path.expanduser(config.embeddings_path))
   for line in f:
     values = line.split()
     word = values[0]
@@ -152,7 +152,7 @@ def load_embeddings(word_index, vocab_size):
   
   print('Found %s word vectors.' % len(embeddings_index))
   
-  embedding_matrix = np.zeros((vocab_size, EMBEDDING_DIM))
+  embedding_matrix = np.zeros((config.vocab_size, EMBEDDING_DIM))
   for word, i in word_index.items():
     embedding_vector = embeddings_index.get(word.lower())
     if embedding_vector is not None:
@@ -207,7 +207,7 @@ def train(config):
       enc_embedding = tf.get_variable("enc_embedding")
       dec_embedding = tf.get_variable("dec_embedding")
 
-      embedding_matrix = load_embeddings(vocab, config.vocab_size)
+      embedding_matrix = load_embeddings(vocab, config)
 
       sess.run(tf.assign(enc_embedding, embedding_matrix))
       sess.run(tf.assign(dec_embedding, embedding_matrix))
@@ -484,8 +484,6 @@ class Struct(object):
       self.__dict__.update({ "kl_min": None })
     if not self.__dict__.get("max_gradient_norm"):
       self.__dict__.update({ "max_gradient_norm": 5.0 })
-    if not self.__dict__.get("load_embeddings"):
-      self.__dict__.update({ "load_embeddings": False })
     if not self.__dict__.get("batch_size"):
       self.__dict__.update({ "batch_size": 1 })
     if not self.__dict__.get("learning_rate"):

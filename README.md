@@ -50,7 +50,7 @@ Hyperparameters are not passed from command prompt like that in [tensorflow/mode
 Below are hyperparameters in [config.json](https://github.com/Chung-I/Variational-Recurrent-Autoencoder-Tensorflow/blob/master/models/config.json):
 
 - `model`:
-    - `size`: embedding size, and encoder/decoder state size.
+    - `size`: embedding size, and encoder/decoder state size. Make sure this is set to the same dimensionality as the embeddings stored in the `embeddings_path`.
     - `latent_dim`: latent space size.
     - `in_vocab_size`: source vocabulary size.
     - `out_vocab_size`: target vocabulary size.
@@ -66,6 +66,7 @@ Below are hyperparameters in [config.json](https://github.com/Chung-I/Variationa
         - `elu`: exponential linear unit.
         - `prelu`: parametric linear unit. (default)
         - `None`: linear.
+    - `embeddings_path`: Path to txt file with [pretrained GloVe word embeddings](https://nlp.stanford.edu/projects/glove/).
 - `train`:
     - `batch_size`
     - `beam_size`: beam size for decoding. __Warning__: beam search is still under implementation. `NotImplementedError` would be raised if `beam_size` is set to be greater than 1.
