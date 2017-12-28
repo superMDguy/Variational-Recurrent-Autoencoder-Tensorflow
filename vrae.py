@@ -57,48 +57,37 @@ FLAGS = tf.app.flags.FLAGS
 def prelu(x):
   with tf.variable_scope("prelu") as scope:
     alphas = tf.get_variable("alphas", [], initializer=tf.constant_initializer(0.0), dtype=tf.float32)
-    return tf.nn.relu(x) - tf.mul(alphas, tf.nn.relu(-x))
+    return tf.nn.relu(x) - tf.multiply(alphas, tf.nn.relu(-x))
 
 
 # We use a number of buckets and pad to the closest one for efficiency.
 # See seq2seq_model.Seq2SeqModel for details of how they work.
 
 
-def read_data(source_path, target_path, config, max_size=None):
-  """Read data from source and target files and put into buckets.
-
-  Args:
-    source_path: path to the files with token-ids for the source language.
-    target_path: path to the file with token-ids for the target language;
-      it must be aligned with the source file: n-th line contains the desired
-      output for n-th line from the source_path.
-    max_size: maximum number of lines to read, all other will be ignored;
-      if 0 or None, data files will be read completely (no limit).
-
-  Returns:
-    data_set: a list of length len(config.buckets); data_set[n] contains a list of
+def read_data(path, config, max_size=None):
+  """Returns:
+     data_set: a list of length len(config.buckets); data_set[n] contains a list of
       (source, target) pairs read from the provided data files that fit
       into the n-th bucket, i.e., such that len(source) < config.buckets[n][0] and
       len(target) < config.buckets[n][1]; source and target are lists of token-ids.
   """
   data_set = [[] for _ in config.buckets]
-  with tf.gfile.GFile(source_path, mode="r") as source_file:
-    with tf.gfile.GFile(target_path, mode="r") as target_file:
-      source, target = source_file.readline(), target_file.readline()
+  with tf.gfile.GFile(path, mode="r") as f:
+      nextLine = f.readline()
       counter = 0
-      while source and target and (not max_size or counter < max_size):
+      while nextLine and (not max_size or counter < max_size):
         counter += 1
         if counter % 100000 == 0:
           print("  reading data line %d" % counter)
           sys.stdout.flush()
-        source_ids = [int(x) for x in source.split()]
-        target_ids = [int(x) for x in target.split()]
+        source_ids = [int(x) for x in nextLine.split()]
+        target_ids = source_ids
         target_ids.append(data_utils.EOS_ID)
         for bucket_id, (source_size, target_size) in enumerate(config.buckets):
           if len(source_ids) < source_size and len(target_ids) < target_size:
             data_set[bucket_id].append([source_ids, target_ids])
             break
-        source, target = source_file.readline(), target_file.readline()
+        nextLine = f.readline()
   return data_set
 
 
@@ -116,11 +105,11 @@ def create_model(session, config, forward_only):
     activation = tf.identity
 
   weight_initializer = tf.orthogonal_initializer if config.orthogonal_initializer else tf.uniform_unit_scaling_initializer
-  bias_initializer = tf.zeros_initializer
+  bias_initializer = tf.zeros_initializer()
 
   model = seq2seq_model.Seq2SeqModel(
-      config.en_vocab_size,
-      config.fr_vocab_size,
+      config.vocab_size,
+      config.vocab_size,
       config.buckets,
       config.size,
       config.num_layers,
@@ -150,13 +139,33 @@ def create_model(session, config, forward_only):
     session.run(tf.global_variables_initializer())
   return model
 
+def load_embeddings(word_index, vocab_size):
+  EMBEDDING_DIM = 300
+  embeddings_index = {}
+  f = open(os.path.expanduser('~/Code/dl/datasets/glove.42B.300d.txt'))
+  for line in f:
+    values = line.split()
+    word = values[0]
+    coefs = np.asarray(values[1:], dtype='float32')
+    embeddings_index[word] = coefs
+  f.close()
+  
+  print('Found %s word vectors.' % len(embeddings_index))
+  
+  embedding_matrix = np.zeros((vocab_size, EMBEDDING_DIM))
+  for word, i in word_index.items():
+    embedding_vector = embeddings_index.get(word.lower())
+    if embedding_vector is not None:
+      # words not found in embedding index will be all-zeros.
+      embedding_matrix[i] = embedding_vector
+
+  return embedding_matrix
+
 
 def train(config):
-  """Train a en->fr translation model using WMT data."""
   # Prepare WMT data.
   print("Preparing WMT data in %s" % config.data_dir)
-  en_train, fr_train, en_dev, fr_dev, _, _ = data_utils.prepare_wmt_data(
-      config.data_dir, config.en_vocab_size, config.fr_vocab_size, config.load_embeddings)
+  train, dev, _ = data_utils.prepare_wmt_data(config.data_dir, config.vocab_size)
 
   with tf.Session() as sess:
     if not os.path.exists(FLAGS.model_dir):
@@ -176,8 +185,8 @@ def train(config):
     print ("Reading development and training data (limit: %d)."
            % config.max_train_data_size)
 
-    dev_set = read_data(en_dev, fr_dev, config)
-    train_set = read_data(en_train, fr_train, config, config.max_train_data_size)
+    dev_set = read_data(dev, config)
+    train_set = read_data(train, config, config.max_train_data_size)
     train_bucket_sizes = [len(train_set[b]) for b in xrange(len(config.buckets))]
     train_total_size = float(sum(train_bucket_sizes))
 
@@ -187,7 +196,24 @@ def train(config):
     train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
                            for i in xrange(len(train_bucket_sizes))]
 
+
+    # Load vocabularies.
+    vocab_path = os.path.join(config.data_dir, "vocab%d" % config.vocab_size)
+    vocab, _ = data_utils.initialize_vocabulary(vocab_path)
+
+    # Load word embeddings
+    print("Loading pretrained word embeddings.")
+    with tf.variable_scope("", reuse=True):
+      enc_embedding = tf.get_variable("enc_embedding")
+      dec_embedding = tf.get_variable("dec_embedding")
+
+      embedding_matrix = load_embeddings(vocab, config.vocab_size)
+
+      sess.run(tf.assign(enc_embedding, embedding_matrix))
+      sess.run(tf.assign(dec_embedding, embedding_matrix))
+
     # This is the training loop.
+    print("Starting training loop.")
     step_time, loss = 0.0, 0.0
     KL_loss = 0.0
     current_step = model.global_step.eval()
@@ -289,12 +315,8 @@ def reconstruct(sess, model, config):
   beam_size = config.beam_size
 
   # Load vocabularies.
-  en_vocab_path = os.path.join(config.data_dir,
-                               "vocab%d.in" % config.en_vocab_size)
-  fr_vocab_path = os.path.join(config.data_dir,
-                               "vocab%d.out" % config.fr_vocab_size)
-  en_vocab, _ = data_utils.initialize_vocabulary(en_vocab_path)
-  _, rev_fr_vocab = data_utils.initialize_vocabulary(fr_vocab_path)
+  vocab_path = os.path.join(config.data_dir, "vocab%d" % config.vocab_size)
+  vocab, rev_vocab = data_utils.initialize_vocabulary(vocab_path)
 
   # Decode from standard input.
   outputs = []
@@ -302,7 +324,7 @@ def reconstruct(sess, model, config):
     sentences = fs.readlines()
   for i, sentence in  enumerate(sentences):
     # Get token-ids for the input sentence.
-    token_ids = data_utils.sentence_to_token_ids(sentence, en_vocab)
+    token_ids = data_utils.sentence_to_token_ids(sentence, vocab)
     # Which bucket does it belong to?
     bucket_id = len(config.buckets) - 1
     for i, bucket in enumerate(config.buckets):
@@ -335,7 +357,7 @@ def reconstruct(sess, model, config):
 
         if EOS_ID in output:
           output = output[:output.index(EOS_ID)]
-        output = " ".join([rev_fr_vocab[word] for word in output]) + "\n"
+        output = " ".join([rev_vocab[word] for word in output]) + "\n"
         outputs.append(output)
 
     else:
@@ -347,7 +369,7 @@ def reconstruct(sess, model, config):
       # If there is an EOS symbol in outputs, cut them at that point.
       if data_utils.EOS_ID in output:
         output = output[:output.index(data_utils.EOS_ID)]
-      output = " ".join([rev_fr_vocab[word] for word in output]) + "\n"
+      output = " ".join([rev_vocab[word] for word in output]) + "\n"
       outputs.append(output)
   with gfile.GFile(FLAGS.output, "w") as enc_dec_f:
     for output in outputs:
@@ -356,18 +378,15 @@ def reconstruct(sess, model, config):
 
 def encode(sess, model, config, sentences):
   # Load vocabularies.
-  en_vocab_path = os.path.join(config.data_dir,
-                               "vocab%d.in" % config.en_vocab_size)
-  fr_vocab_path = os.path.join(config.data_dir,
-                               "vocab%d.out" % config.fr_vocab_size)
-  en_vocab, _ = data_utils.initialize_vocabulary(en_vocab_path)
-  _, rev_fr_vocab = data_utils.initialize_vocabulary(fr_vocab_path)
+  vocab_path = os.path.join(config.data_dir,
+                            "vocab%d" % config.vocab_size)
+  vocab, rev_vocab = data_utils.initialize_vocabulary(vocab_path)
   
   means = []
   logvars = []
   for i, sentence in enumerate(sentences):
     # Get token-ids for the input sentence.
-    token_ids = data_utils.sentence_to_token_ids(sentence, en_vocab)
+    token_ids = data_utils.sentence_to_token_ids(sentence, vocab)
     # Which bucket does it belong to?
     bucket_id = len(config.buckets) - 1
     for i, bucket in enumerate(config.buckets):
@@ -389,9 +408,9 @@ def encode(sess, model, config, sentences):
 
 
 def decode(sess, model, config, means, logvars, bucket_id):
-  fr_vocab_path = os.path.join(config.data_dir,
-                               "vocab%d.out" % config.fr_vocab_size)
-  _, rev_fr_vocab = data_utils.initialize_vocabulary(fr_vocab_path)
+  vocab_path = os.path.join(config.data_dir,
+                            "vocab%d" % config.vocab_size)
+  _, rev_vocab = data_utils.initialize_vocabulary(vocab_path)
 
   _, decoder_inputs, target_weights = model.get_batch(
       {bucket_id: [([], [])]}, bucket_id)
@@ -404,11 +423,10 @@ def decode(sess, model, config, means, logvars, bucket_id):
     # If there is an EOS symbol in outputs, cut them at that point.
     if data_utils.EOS_ID in output:
       output = output[:output.index(data_utils.EOS_ID)]
-    output = " ".join([rev_fr_vocab[word] for word in output]) + "\n"
+    output = " ".join([rev_vocab[word] for word in output]) + "\n"
     outputs.append(output)
 
   return outputs
-  # Print out French sentence corresponding to outputs.
 
 def n_sample(sess, model, config):
   bucket_id = len(config.buckets) - 1
@@ -454,8 +472,10 @@ def encode_interpolate(sess, model, config):
   means, logvars = encode(sess, model, config, sentences)
   outputs = interpolate(sess, model, config, means, logvars, config.num_pts)
   with gfile.GFile(FLAGS.output, "w") as interp_f:
+    interp_f.write(sentences[0])
     for output in outputs:
       interp_f.write(output)
+    interp_f.write(sentences[1])
 
 class Struct(object):
   def __init__(self, **entries):

@@ -215,56 +215,24 @@ def data_to_token_ids(data_path, target_path, vocabulary_path,
           tokens_file.write(" ".join([str(tok) for tok in token_ids]) + "\n")
 
 
-def prepare_wmt_data(data_dir, en_vocabulary_size, fr_vocabulary_size,
-        load_embeddings=False, tokenizer=None):
-  """Get WMT data into data_dir, create vocabularies and tokenize data.
-
-  Args:
-    data_dir: directory in which the data sets will be stored.
-    en_vocabulary_size: size of the English vocabulary to create and use.
-    fr_vocabulary_size: size of the French vocabulary to create and use.
-    tokenizer: a function to use to tokenize each data sentence;
-      if None, basic_tokenizer will be used.
-
-  Returns:
-    A tuple of 6 elements:
-      (1) path to the token-ids for English training data-set,
-      (2) path to the token-ids for French training data-set,
-      (3) path to the token-ids for English development data-set,
-      (4) path to the token-ids for French development data-set,
-      (5) path to the English vocabulary file,
-      (6) path to the French vocabulary file.
-  """
+def prepare_wmt_data(data_dir, vocabulary_size, tokenizer=None):
   # Get wmt data to the specified directory.
   train_path = os.path.join(data_dir, "train.txt")
   dev_path = os.path.join(data_dir, "dev.txt")
 
   # Create vocabularies of the appropriate sizes.
-  fr_vocab_path = os.path.join(data_dir, "vocab%d.out" % fr_vocabulary_size)
-  en_vocab_path = os.path.join(data_dir, "vocab%d.in" % en_vocabulary_size)
-  create_vocabulary(fr_vocab_path, train_path + ".out", fr_vocabulary_size,
-          os.path.join(data_dir, "dec_embedding{0}.tsv".format(fr_vocabulary_size)),
+  vocab_path = os.path.join(data_dir, "vocab%d" % vocabulary_size)
+  create_vocabulary(vocab_path, train_path, vocabulary_size,
+          os.path.join(data_dir, "embedding{0}.tsv".format(vocabulary_size)),
           tokenizer)
-  create_vocabulary(en_vocab_path, train_path + ".in", en_vocabulary_size,
-          os.path.join(data_dir, "enc_embedding{0}.tsv".format(en_vocabulary_size)),
-          tokenizer)
-  #if load_embeddings:
-  #  embed_utils.save_embeddings(fr_vocab_path, "embed5000.txt")
-  #  embed_utils.save_embeddings(en_vocab_path, "embed5000.txt")
-    
 
   # Create token ids for the training data.
-  fr_train_ids_path = train_path + (".ids%d.out" % fr_vocabulary_size)
-  en_train_ids_path = train_path + (".ids%d.in" % en_vocabulary_size)
-  data_to_token_ids(train_path + ".out", fr_train_ids_path, fr_vocab_path, tokenizer)
-  data_to_token_ids(train_path + ".in", en_train_ids_path, en_vocab_path, tokenizer)
+  train_ids_path = train_path + (".ids%d" % vocabulary_size)
+  data_to_token_ids(train_path, train_ids_path, vocab_path, tokenizer)
 
   # Create token ids for the development data.
-  fr_dev_ids_path = dev_path + (".ids%d.out" % fr_vocabulary_size)
-  en_dev_ids_path = dev_path + (".ids%d.in" % en_vocabulary_size)
-  data_to_token_ids(dev_path + ".out", fr_dev_ids_path, fr_vocab_path, tokenizer)
-  data_to_token_ids(dev_path + ".in", en_dev_ids_path, en_vocab_path, tokenizer)
+  dev_ids_path = dev_path + (".ids%d" % vocabulary_size)
+  data_to_token_ids(dev_path, dev_ids_path, vocab_path, tokenizer)
 
-  return (en_train_ids_path, fr_train_ids_path,
-          en_dev_ids_path, fr_dev_ids_path,
-          en_vocab_path, fr_vocab_path)
+  return (train_ids_path, dev_ids_path, vocab_path)
+

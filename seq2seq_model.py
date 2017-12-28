@@ -103,9 +103,8 @@ class Seq2SeqModel(object):
     self.learning_rate = tf.Variable(
         float(learning_rate), trainable=False, dtype=dtype)
 
-    self.enc_embedding = tf.get_variable("enc_embedding", [source_vocab_size, size], dtype=dtype, initializer=weight_initializer())
-
-    self.dec_embedding = tf.get_variable("dec_embedding", [target_vocab_size, size], dtype=dtype, initializer=weight_initializer())
+    self.enc_embedding = tf.get_variable("enc_embedding", [source_vocab_size, size], dtype=dtype, trainable=False)
+    self.dec_embedding = tf.get_variable("dec_embedding", [target_vocab_size, size], dtype=dtype, trainable=False)
 
     self.kl_rate = tf.Variable(
        0.0, trainable=False, dtype=dtype)
@@ -134,9 +133,10 @@ class Seq2SeqModel(object):
         local_w_t = tf.cast(w_t, tf.float32)
         local_b = tf.cast(b, tf.float32)
         local_inputs = tf.cast(inputs, tf.float32)
+        local_labels = tf.cast(labels, tf.float32)
         return tf.cast(
-            tf.nn.sampled_softmax_loss(local_w_t, local_b, local_inputs, labels,
-                                       num_samples, self.target_vocab_size),
+            tf.nn.sampled_softmax_loss(weights=local_w_t, biases=local_b, inputs=local_inputs, labels=local_labels,
+                                       num_sampled=num_samples, num_classes=self.target_vocab_size),
             dtype)
       softmax_loss_function = sampled_loss
     # Create the internal multi-layer cell for our RNN.

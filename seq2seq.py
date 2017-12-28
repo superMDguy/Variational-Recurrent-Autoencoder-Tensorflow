@@ -69,8 +69,7 @@ from tensorflow.python.ops import control_flow_ops
 from tensorflow.python.ops import embedding_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import nn_ops
-from tensorflow.python.ops import rnn
-from tensorflow.python.ops import rnn_cell
+from tensorflow.contrib import rnn
 from tensorflow.python.ops import variable_scope
 from tensorflow.python.util import nest
 import tensorflow as tf
@@ -78,7 +77,7 @@ import numpy as np
 from utils.distributions import DiagonalGaussian
 
 # TODO(ebrevdo): Remove once _linear is fully deprecated.
-linear = rnn_cell._linear  # pylint: disable=protected-access
+#linear = rnn_cell._linear  # pylint: disable=protected-access
 
 
 
@@ -152,7 +151,7 @@ def rnn_decoder(decoder_inputs, initial_state, cell, word_dropout_keep_prob=1, r
     outputs = []
     prev = None
     seq_len = len(decoder_inputs)
-    keep = tf.select(tf.random_uniform([seq_len]) < word_dropout_keep_prob,
+    keep = tf.where(tf.random_uniform([seq_len]) < word_dropout_keep_prob,
             tf.fill([seq_len], True), tf.fill([seq_len], False))
     for i, inp in enumerate(decoder_inputs):
       if loop_function is not None and prev is not None:
@@ -221,11 +220,11 @@ def beam_rnn_decoder(decoder_inputs, initial_state, cell, loop_function=None,
           states =[]
           for kk in range(beam_size):
                 states.append(state)
-          state = tf.reshape(tf.concat(0, states), [-1, state_size])
+          state = tf.reshape(tf.concat(axis=0, values=states), [-1, state_size])
 
       outputs.append(tf.argmax(nn_ops.xw_plus_b(
-          output, output_projection[0], output_projection[1]), dimension=1))
-  return outputs, state, tf.reshape(tf.concat(0, beam_path),[-1,beam_size]), tf.reshape(tf.concat(0, beam_symbols),[-1,beam_size])
+          output, output_projection[0], output_projection[1]), axis=1))
+  return outputs, state, tf.reshape(tf.concat(axis=0, values=beam_path),[-1,beam_size]), tf.reshape(tf.concat(axis=0, values=beam_symbols),[-1,beam_size])
 
 
 def embedding_rnn_decoder(decoder_inputs,
@@ -367,7 +366,7 @@ def embedding_attention_encoder(encoder_inputs,
       scope or "embedding_attention_encoder", dtype=dtype) as scope:
     dtype = scope.dtype
     # Encoder.
-    encoder_cell = rnn_cell.EmbeddingWrapper(
+    encoder_cell = rnn.EmbeddingWrapper(
         cell, embedding_classes=num_encoder_symbols,
         embedding_size=embedding_size)
     encoder_outputs, encoder_state = rnn.rnn(
@@ -402,9 +401,9 @@ def embedding_encoder(encoder_inputs,
     if bidirectional:
       _, output_state_fw, output_state_bw = rnn.bidirectional_rnn(cell, cell, emb_inp,
               dtype=dtype)
-      encoder_state = tf.concat(1, [output_state_fw, output_state_bw])
+      encoder_state = tf.concat(axis=1, values=[output_state_fw, output_state_bw])
     else:
-      _, encoder_state = rnn.rnn(
+      _, encoder_state = rnn.static_rnn(
         cell, emb_inp, dtype=dtype)
 
     return encoder_state
@@ -659,7 +658,7 @@ def sample(means,
       z = posterior.sample
 
       logqs = posterior.logps(z)
-      L = tf.get_variable("inverse_cholesky", [latent_dim, latent_dim], dtype=dtype, initializer=tf.zeros_initializer)
+      L = tf.get_variable("inverse_cholesky", [latent_dim, latent_dim], dtype=dtype, initializer=tf.zeros_initializer())
       diag_one = tf.ones([latent_dim], dtype=dtype)
       L = tf.matrix_set_diag(L, diag_one)
       mask = np.tril(np.ones([latent_dim,latent_dim]))
@@ -696,17 +695,17 @@ def encoder_to_latent(encoder_state,
   if use_lstm:
     concat_state_size *= 2
     if num_layers > 1:
-      encoder_state = list(map(lambda state_tuple: tf.concat(1, state_tuple), encoder_state))
+      encoder_state = list(map(lambda state_tuple: tf.concat(axis=1, values=state_tuple), encoder_state))
     else:
-      encoder_state = tf.concat(1, encoder_state)
+      encoder_state = tf.concat(axis=1, values=encoder_state)
   if num_layers > 1:
-    encoder_state = tf.concat(1, encoder_state)
+    encoder_state = tf.concat(axis=1, values=encoder_state)
   with tf.variable_scope('encoder_to_latent'):
     w = tf.get_variable("w",[concat_state_size, 2 * latent_dim],
       dtype=dtype)
     b = tf.get_variable("b", [2 * latent_dim], dtype=dtype)
     mean_logvar = prelu(tf.matmul(encoder_state, w) + b)
-    mean, logvar = tf.split(1, 2, mean_logvar)
+    mean, logvar = tf.split(axis=1, num_or_size_splits=2, value=mean_logvar)
 
   return mean, logvar
 
@@ -728,11 +727,11 @@ def latent_to_decoder(latent_vector,
     b = tf.get_variable("b", [concat_state_size], dtype=dtype)
     decoder_initial_state = prelu(tf.matmul(latent_vector, w) + b)
   if num_layers > 1:
-    decoder_initial_state = tuple(tf.split(1, num_layers, decoder_initial_state))
+    decoder_initial_state = tuple(tf.split(axis=1, num_or_size_splits=num_layers, value=decoder_initial_state))
     if use_lstm:
-      decoder_initial_state = [tuple(tf.split(1, 2, single_layer_state)) for single_layer_state in decoder_initial_state]
+      decoder_initial_state = [tuple(tf.split(axis=1, num_or_size_splits=2, value=single_layer_state)) for single_layer_state in decoder_initial_state]
   elif use_lstm:
-    decoder_initial_state = tuple(tf.split(1, 2, decoder_initial_state))
+    decoder_initial_state = tuple(tf.split(axis=1, num_or_size_splits=2, value=decoder_initial_state))
 
   return decoder_initial_state
 
