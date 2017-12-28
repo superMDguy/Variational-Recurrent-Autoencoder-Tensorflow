@@ -1,6 +1,6 @@
 __pycache__
 models/train
-models/text
+models/test
 corpus/embedding*.tsv
 corpus/vocab*
 corpus/*.txt.ids*
