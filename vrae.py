@@ -142,7 +142,7 @@ def create_model(session, config, forward_only):
 def load_embeddings(word_index, config):
   EMBEDDING_DIM = config.size
   embeddings_index = {}
-  f = open(os.path.expanduser(config.embeddings_path))
+  f = open(os.path.expanduser(config.embeddings_path), 'rb')
   for line in f:
     values = line.split()
     word = values[0]
