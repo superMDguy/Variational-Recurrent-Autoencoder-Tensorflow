@@ -1,4 +1,11 @@
+# config
+models/config.json
+
+# python stuff
 __pycache__
+*.pyc
+
+# training files
 models/train
 models/test
 corpus/embedding*.tsv
