@@ -140,11 +140,14 @@ class Seq2SeqModel(object):
             dtype)
       softmax_loss_function = sampled_loss
     # Create the internal multi-layer cell for our RNN.
-    single_cell = tf.nn.rnn_cell.GRUCell(size)
-    if use_lstm:
-      single_cell = tf.nn.rnn_cell.BasicLSTMCell(size)
 
-    cell = single_cell
+    # Create the internal multi-layer cell for our RNN.
+    if use_lstm:
+      cells = tf.contrib.rnn.MultiRNNCell([tf.contrib.rnn.BasicLSTMCell(size) for _ in range(num_layers)])
+    else :
+      cells = tf.contrib.rnn.MultiRNNCell([tf.contrib.rnn.GRUCell(size) for _ in range(num_layers)])
+	
+    cell = cells
 
     def encoder_f(encoder_inputs):
       return seq2seq.embedding_encoder(
