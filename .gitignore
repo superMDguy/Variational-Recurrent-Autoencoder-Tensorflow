@@ -6,8 +6,12 @@ __pycache__
 *.pyc
 
 # training files
-models/train
-models/test
+models/models.*.index
+models/models.*.meta
+models/models.ckpt-*
+models/checkpoint
+models/train/
+models/test/
 corpus/embedding*.tsv
 corpus/vocab*
 corpus/*.txt.ids*
