@@ -6,16 +6,25 @@ Tensorflow implementation of [Generating Sentences from a Continuous Space](http
 
 1. Python packages:
     - Python 3.4 or higher
-    - Tensorflow r0.12
+    - Tensorflow 1.4
     - Numpy
+    - Some [pretrained GloVe word embeddings](https://nlp.stanford.edu/projects/glove/).
 
 2. Clone this repository:
 ```shell=
-git clone https://github.com/Chung-I/Variational-Recurrent-Autoencoder-Tensorflow.git
+git clone git@github.com:superMDguy/Variational-Recurrent-Autoencoder-Tensorflow.git
 ```
 
-## Usage
+3. Setup your [config file](#configjson):
+Copy the `models/config.example.json` file to `models/config.json`.
 
+```shell=
+cp models/config.example.json models/config.json
+```
+
+Then, fill in your configuration. In particular, look at `model.size` and `model.embeddings_path`.
+
+## Usage
 
 Training:
 ```shell=
@@ -41,7 +50,7 @@ python vrae.py --model_dir models --do interpolate --new False --input input.txt
 
 `do`: Accept 4 values: `train`, `encode_decode`, `sample`, or `interpolate`.
 
-`new`: create models with fresh parameters if set to `True`; else read model parameters from checkpoints in `model_dir`.
+`new`: create models with fresh parameters if set to `True`; else load model from checkpoints in `model_dir`.
 
 ## config.json
 
@@ -55,7 +64,7 @@ Below are hyperparameters in [config.json](https://github.com/Chung-I/Variationa
     - `in_vocab_size`: source vocabulary size.
     - `out_vocab_size`: target vocabulary size.
     - `data_dir`: path to the corpus.
-    - `num_layers`: number of layers for encoder and decoder.
+    - `num_layers`: number of layers for encoder and decoder. __Warning__: not implemented yet.
     - `use_lstm`: use lstm for encoder and decoder or not. Use `BasicLSTMCell` if set to `True`; else `GRUCell` is used.
     - `buckets`: A list of pairs of [input size, output size] for each bucket.
     - `bidirectional`: `bidirectional_rnn` is used if set to `True`.
@@ -96,3 +105,9 @@ Below are hyperparameters in [config.json](https://github.com/Chung-I/Variationa
 ## Data
 
 Penn TreeBank corpus is included in the repo. We also provide a Chinese poem corpus, which can be download [here](https://drive.google.com/open?id=0B08WmZIVGFtGclpleFpiV1BxeTA). A model trained on the above Chinese peom corpus can be download [here](https://drive.google.com/open?id=0B08WmZIVGFtGc2J3N3lZeHMycFU). The corresponding vocabulary file is [here](https://drive.google.com/drive/folders/0B08WmZIVGFtGSVZnUU9qbHNtMEk).
+
+## Authors
+
+* **Zhong-Yi Li** ([@Chung-I](https://github.com/Chung-I)) - *Created initial version of project with TF r0.10*
+* **Matthew Dangerfield** ([@superMDguy](https://github.com/superMDguy)) - *Upgraded to TF 1.0 and added GloVe embeddings support*
+
