@@ -139,17 +139,24 @@ class Seq2SeqModel(object):
                                        num_sampled=num_samples, num_classes=self.target_vocab_size),
             dtype)
       softmax_loss_function = sampled_loss
-    # Create the internal multi-layer cell for our RNN.
-    single_cell = tf.nn.rnn_cell.GRUCell(size)
-    if use_lstm:
-      single_cell = tf.nn.rnn_cell.BasicLSTMCell(size)
+    # Create the internal multi-layer state for our RNN.
 
-    cell = single_cell
+    # Create the internal multi-layer state for our RNN.
+    if use_lstm:
+      if num_layers > 1 :
+        state = tf.contrib.rnn.MultiRNNCell([tf.contrib.rnn.BasicLSTMCell(size) for _ in range(num_layers)])
+      else :
+        state = tf.contrib.rnn.BasicLSTMCell(size)
+    else :
+      if num_layers > 1:
+        state = tf.contrib.rnn.MultiRNNCell([tf.contrib.rnn.GRUCell(size) for _ in range(num_layers)])
+      else :	
+        state = tf.contrib.rnn.GRUCell(size)
 
     def encoder_f(encoder_inputs):
       return seq2seq.embedding_encoder(
           encoder_inputs,
-          cell,
+          state,
           self.enc_embedding,
           num_symbols=source_vocab_size,
           embedding_size=size,
@@ -161,7 +168,7 @@ class Seq2SeqModel(object):
       return seq2seq.embedding_rnn_decoder(
           decoder_inputs,
           encoder_state,
-          cell,
+          state,
           embedding=self.dec_embedding,
           word_dropout_keep_prob=word_dropout_keep_prob,
           replace_input=replace_input,
@@ -208,7 +215,7 @@ class Seq2SeqModel(object):
       return tf.nn.seq2seq.embedding_attention_seq2seq_f(
           encoder_inputs,
           decoder_inputs,
-          cell,
+          state,
           num_encoder_symbols=source_vocab_size,
           num_decoder_symbols=target_vocab_size,
           embedding_size=size,

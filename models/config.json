@@ -11,8 +11,8 @@
     "probabilistic": true,
     "orthogonal_initializer": true,
     "iaf": true,
-    "activation": "prelu",
-    "embeddings_path": "<path to glove embeddings>"
+    "embeddings_path": "<path to glove embeddings>",
+    "activation": "prelu"
   },
   "train": {
     "batch_size": 256,
