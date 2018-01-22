@@ -1,9 +1,8 @@
 {
   "model": {
-    "size": 256,
+    "size": 300,
     "latent_dim": 16,
-    "en_vocab_size": 20000,
-    "fr_vocab_size": 20000,
+    "vocab_size": 20000,
     "data_dir": "corpus",
     "num_layers": 1,
     "use_lstm": false,
@@ -12,6 +11,7 @@
     "probabilistic": true,
     "orthogonal_initializer": true,
     "iaf": true,
+    "embeddings_path": "<path to glove embeddings>",
     "activation": "prelu"
   },
   "train": {
@@ -21,7 +21,7 @@
     "kl_rate_rise_factor": 0.001,
     "kl_rate_rise_time": 50000,
     "max_train_data_size": 0,
-    "steps_per_checkpoint": 2000,
+    "steps_per_checkpoint": 750,
     "feed_previous": true,
     "kl_min": 4,
     "max_gradient_norm": 5.0,
