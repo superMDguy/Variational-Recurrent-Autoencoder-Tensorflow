@@ -16,3 +16,6 @@ corpus/embedding*.tsv
 corpus/vocab*
 corpus/*.txt.ids*
 
+# editor files
+.idea
+.vscode

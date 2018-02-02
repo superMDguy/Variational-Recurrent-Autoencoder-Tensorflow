@@ -103,8 +103,8 @@ class Seq2SeqModel(object):
     self.learning_rate = tf.Variable(
         float(learning_rate), trainable=False, dtype=dtype)
 
-    self.enc_embedding = tf.get_variable("enc_embedding", [source_vocab_size, size], dtype=dtype, trainable=False)
-    self.dec_embedding = tf.get_variable("dec_embedding", [target_vocab_size, size], dtype=dtype, trainable=False)
+    self.enc_embedding = tf.get_variable("enc_embedding", [source_vocab_size, size], dtype=dtype)
+    self.dec_embedding = tf.get_variable("dec_embedding", [target_vocab_size, size], dtype=dtype)
 
     self.kl_rate = tf.Variable(
        0.0, trainable=False, dtype=dtype)
@@ -270,7 +270,7 @@ class Seq2SeqModel(object):
   def step(self, session, encoder_inputs, decoder_inputs, target_weights,
              bucket_id, forward_only, prob, beam_size=1):
     """Run a step of the model feeding the given inputs.
-  
+
     Args:
       session: tensorflow session to use.
       encoder_inputs: list of numpy int vectors to feed as encoder inputs.
@@ -278,11 +278,11 @@ class Seq2SeqModel(object):
       target_weights: list of numpy float vectors to feed as target weights.
       bucket_id: which bucket of the model to use.
       forward_only: whether to do the backward step or only forward.
-  
+
     Returns:
       A triple consisting of gradient norm (or None if we did not do backward),
       average perplexity, and the outputs.
-  
+
     Raises:
       ValueError: if length of encoder_inputs, decoder_inputs, or
         target_weights disagrees with bucket size for the specified bucket_id.
@@ -298,7 +298,7 @@ class Seq2SeqModel(object):
     if len(target_weights) != decoder_size:
       raise ValueError("Weights length must be equal to the one in bucket,"
                        " %d != %d." % (len(target_weights), decoder_size))
-  
+
     # Input feed: encoder inputs, decoder inputs, target_weights, as provided.
     input_feed = {}
     for l in xrange(encoder_size):
@@ -308,13 +308,13 @@ class Seq2SeqModel(object):
       input_feed[self.target_weights[l].name] = target_weights[l]
     if self.word_dropout_keep_prob < 1:
       input_feed[self.replace_input.name] = np.full((self.batch_size), data_utils.UNK_ID, dtype=np.int32)
-  
+
     # Since our targets are decoder inputs shifted by one, we need one more.
     last_target = self.decoder_inputs[decoder_size].name
     input_feed[last_target] = np.zeros([self.batch_size], dtype=np.int32)
     if not prob:
       input_feed[self.logvars[bucket_id]] = np.full((self.batch_size, self.latent_dim), -800.0, dtype=np.float32)
-  
+
     # Output feed: depends on whether we do a backward step or not.
     if not forward_only:
       output_feed = [self.updates[bucket_id],  # Update Op that does SGD.
@@ -325,7 +325,7 @@ class Seq2SeqModel(object):
       output_feed = [self.losses[bucket_id], self.KL_costs[bucket_id]]  # Loss for this batch.
       for l in xrange(decoder_size):  # Output logits.
         output_feed.append(self.outputs[bucket_id][l])
-  
+
     outputs = session.run(output_feed, input_feed)
     if not forward_only:
       return outputs[1], outputs[2], outputs[3], None  # Gradient norm, loss, KL divergence, no outputs.

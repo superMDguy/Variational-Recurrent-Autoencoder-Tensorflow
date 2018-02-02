@@ -8,7 +8,7 @@ Tensorflow implementation of [Generating Sentences from a Continuous Space](http
     - Python 3.4 or higher
     - Tensorflow 1.4
     - Numpy
-    - Some [pretrained GloVe word embeddings](https://nlp.stanford.edu/projects/glove/).
+    - Pretrained [GloVe word embeddings](https://nlp.stanford.edu/projects/glove/).
 
 2. Clone this repository:
 ```shell=
@@ -48,7 +48,7 @@ python vrae.py --model_dir models --do interpolate --new False --input input.txt
 
 `model_dir`: The location of the config file `config.json` and the checkpoint file.
 
-`do`: Accept 4 values: `train`, `encode_decode`, `sample`, or `interpolate`.
+`do`: Accepts 4 values: `train`, `encode_decode`, `sample`, or `interpolate`.
 
 `new`: create models with fresh parameters if set to `True`; else load model from checkpoints in `model_dir`.
 
@@ -56,7 +56,7 @@ python vrae.py --model_dir models --do interpolate --new False --input input.txt
 
 Hyperparameters are not passed from command prompt like that in [tensorflow/models/rnn/translate/translate.py](https://github.com/tensorflow/tensorflow/blob/r0.12/tensorflow/models/rnn/translate/translate.py). Instead, [vrae.py](https://github.com/Chung-I/Variational-Recurrent-Autoencoder-Tensorflow/blob/master/vrae.py) reads hyperparameters from [config.json](https://github.com/Chung-I/Variational-Recurrent-Autoencoder-Tensorflow/blob/master/models/config.json) in `model_dir`.
 
-Below are hyperparameters in [config.json](https://github.com/Chung-I/Variational-Recurrent-Autoencoder-Tensorflow/blob/master/models/config.json):
+Below are hyperparameters in [config.json](https://github.com/superMDguy/Variational-Recurrent-Autoencoder-Tensorflow/blob/master/models/config.example.json):
 
 - `model`:
     - `size`: embedding size, and encoder/decoder state size. Make sure this is set to the same dimensionality as the embeddings stored in the `embeddings_path`.
@@ -64,7 +64,7 @@ Below are hyperparameters in [config.json](https://github.com/Chung-I/Variationa
     - `in_vocab_size`: source vocabulary size.
     - `out_vocab_size`: target vocabulary size.
     - `data_dir`: path to the corpus.
-    - `num_layers`: number of layers for encoder and decoder. __Warning__: not implemented yet.
+    - `num_layers`: number of layers for encoder and decoder.
     - `use_lstm`: use lstm for encoder and decoder or not. Use `BasicLSTMCell` if set to `True`; else `GRUCell` is used.
     - `buckets`: A list of pairs of [input size, output size] for each bucket.
     - `bidirectional`: `bidirectional_rnn` is used if set to `True`.
@@ -75,7 +75,7 @@ Below are hyperparameters in [config.json](https://github.com/Chung-I/Variationa
         - `elu`: exponential linear unit.
         - `prelu`: parametric linear unit. (default)
         - `None`: linear.
-    - `embeddings_path`: Path to txt file with [pretrained GloVe word embeddings](https://nlp.stanford.edu/projects/glove/).
+    - `embeddings_path`: Path to txt file with [pretrained GloVe word embeddings](https://nlp.stanford.edu/projects/glove/). __Note:__ pretrained weights will be finetuned during training.
 - `train`:
     - `batch_size`
     - `beam_size`: beam size for decoding. __Warning__: beam search is still under implementation. `NotImplementedError` would be raised if `beam_size` is set to be greater than 1.
@@ -109,5 +109,4 @@ Penn TreeBank corpus is included in the repo. We also provide a Chinese poem cor
 ## Authors
 
 * **Zhong-Yi Li** ([@Chung-I](https://github.com/Chung-I)) - *Created initial version of project with TF r0.10*
-* **Matthew Dangerfield** ([@superMDguy](https://github.com/superMDguy)) - *Upgraded to TF 1.0 and added GloVe embeddings support*
-
+* **Matthew Dangerfield** ([@superMDguy](https://github.com/superMDguy)) - *Upgraded to TF ^1.0 and added GloVe embeddings support*
