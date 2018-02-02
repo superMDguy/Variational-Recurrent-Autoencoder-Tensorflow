@@ -71,10 +71,6 @@ from tensorflow.python.ops import variable_scope
 from utils.distributions import DiagonalGaussian
 
 
-# TODO(ebrevdo): Remove once _linear is fully deprecated.
-# linear = rnn_cell._linear  # pylint: disable=protected-access
-
-
 def prelu(_x):
     with tf.variable_scope("prelu"):
         alphas = tf.get_variable('alpha', _x.get_shape()[-1],

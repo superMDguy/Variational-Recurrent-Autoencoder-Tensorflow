@@ -8,7 +8,8 @@ Tensorflow implementation of [Generating Sentences from a Continuous Space](http
     - Python 3.4 or higher
     - Tensorflow 1.4
     - Numpy
-    - Pretrained [GloVe word embeddings](https://nlp.stanford.edu/projects/glove/).
+
+Optionally, download pretrained [GloVe word embeddings](https://nlp.stanford.edu/projects/glove/).
 
 2. Clone this repository:
 ```shell=
@@ -75,7 +76,7 @@ Below are hyperparameters in [config.json](https://github.com/superMDguy/Variati
         - `elu`: exponential linear unit.
         - `prelu`: parametric linear unit. (default)
         - `None`: linear.
-    - `embeddings_path`: Path to txt file with [pretrained GloVe word embeddings](https://nlp.stanford.edu/projects/glove/). __Note:__ pretrained weights will be finetuned during training.
+    - `embeddings_path`: Path to txt file with [pretrained GloVe word embeddings](https://nlp.stanford.edu/projects/glove/). Ignored if not set. __Note:__ pretrained weights will be finetuned during training.
 - `train`:
     - `batch_size`
     - `beam_size`: beam size for decoding. __Warning__: beam search is still under implementation. `NotImplementedError` would be raised if `beam_size` is set to be greater than 1.
