@@ -103,28 +103,38 @@ class Seq2SeqModel(object):
         self.learning_rate = tf.Variable(
             float(learning_rate), trainable=False, dtype=dtype)
 
-        self.enc_embedding = tf.get_variable("enc_embedding", [source_vocab_size, size], dtype=dtype)
-        self.dec_embedding = tf.get_variable("dec_embedding", [target_vocab_size, size], dtype=dtype)
+        self.enc_embedding = tf.get_variable(
+            "enc_embedding", [source_vocab_size, size], dtype=dtype)
+        self.dec_embedding = tf.get_variable(
+            "dec_embedding", [target_vocab_size, size], dtype=dtype)
 
         self.kl_rate = tf.Variable(
             0.0, trainable=False, dtype=dtype)
-        self.new_kl_rate = tf.placeholder(tf.float32, shape=[], name="new_kl_rate")
+        self.new_kl_rate = tf.placeholder(
+            tf.float32, shape=[], name="new_kl_rate")
         self.kl_rate_update = tf.assign(self.kl_rate, self.new_kl_rate)
 
-        self.replace_input = tf.placeholder(tf.int32, shape=[None], name="replace_input")
-        replace_input = tf.nn.embedding_lookup(self.dec_embedding, self.replace_input)
+        self.replace_input = tf.placeholder(
+            tf.int32, shape=[None], name="replace_input")
+        replace_input = tf.nn.embedding_lookup(
+            self.dec_embedding, self.replace_input)
 
         self.global_step = tf.Variable(0, trainable=False)
 
         # If we use sampled softmax, we need an output projection.
         output_projection = None
         softmax_loss_function = None
-        # Sampled softmax only makes sense if we sample less than vocabulary size.
+        # Sampled softmax only makes sense if we sample less than vocabulary
+        # size.
         if num_samples > 0 and num_samples < self.target_vocab_size:
-            w_t = tf.get_variable("proj_w", [self.target_vocab_size, size], dtype=dtype,
-                                  initializer=weight_initializer())
+            w_t = tf.get_variable(
+                "proj_w", [
+                    self.target_vocab_size, size], dtype=dtype, initializer=weight_initializer())
             w = tf.transpose(w_t)
-            b = tf.get_variable("proj_b", [self.target_vocab_size], dtype=dtype, initializer=bias_initializer)
+            b = tf.get_variable("proj_b",
+                                [self.target_vocab_size],
+                                dtype=dtype,
+                                initializer=bias_initializer)
             output_projection = (w, b)
 
             def sampled_loss(inputs, labels):
@@ -136,9 +146,13 @@ class Seq2SeqModel(object):
                 local_inputs = tf.cast(inputs, tf.float32)
                 local_labels = tf.cast(labels, tf.float32)
                 return tf.cast(
-                    tf.nn.sampled_softmax_loss(weights=local_w_t, biases=local_b, inputs=local_inputs,
-                                               labels=local_labels,
-                                               num_sampled=num_samples, num_classes=self.target_vocab_size),
+                    tf.nn.sampled_softmax_loss(
+                        weights=local_w_t,
+                        biases=local_b,
+                        inputs=local_inputs,
+                        labels=local_labels,
+                        num_sampled=num_samples,
+                        num_classes=self.target_vocab_size),
                     dtype)
 
             softmax_loss_function = sampled_loss
@@ -223,13 +237,22 @@ class Seq2SeqModel(object):
         self.decoder_inputs = []
         self.target_weights = []
         for i in xrange(buckets[-1][0]):  # Last bucket is the biggest one.
-            self.encoder_inputs.append(tf.placeholder(tf.int32, shape=[None],
-                                                      name="encoder{0}".format(i)))
+            self.encoder_inputs.append(
+                tf.placeholder(
+                    tf.int32,
+                    shape=[None],
+                    name="encoder{0}".format(i)))
         for i in xrange(buckets[-1][1] + 1):
-            self.decoder_inputs.append(tf.placeholder(tf.int32, shape=[None],
-                                                      name="decoder{0}".format(i)))
-            self.target_weights.append(tf.placeholder(dtype, shape=[None],
-                                                      name="weight{0}".format(i)))
+            self.decoder_inputs.append(
+                tf.placeholder(
+                    tf.int32,
+                    shape=[None],
+                    name="decoder{0}".format(i)))
+            self.target_weights.append(
+                tf.placeholder(
+                    dtype,
+                    shape=[None],
+                    name="weight{0}".format(i)))
 
         # Our targets are decoder inputs shifted by one.
         targets = [self.decoder_inputs[i + 1]
@@ -258,8 +281,8 @@ class Seq2SeqModel(object):
             for b in xrange(len(buckets)):
                 total_loss = self.losses[b] + self.KL_objs[b]
                 gradients = tf.gradients(total_loss, params)
-                clipped_gradients, norm = tf.clip_by_global_norm(gradients,
-                                                                 max_gradient_norm)
+                clipped_gradients, norm = tf.clip_by_global_norm(
+                    gradients, max_gradient_norm)
                 self.gradient_norms.append(norm)
                 self.updates.append(optimizer.apply_gradients(
                     zip(clipped_gradients, params), global_step=self.global_step))
@@ -289,16 +312,23 @@ class Seq2SeqModel(object):
         # Check if the sizes match.
         encoder_size, decoder_size = self.buckets[bucket_id]
         if len(encoder_inputs) != encoder_size:
-            raise ValueError("Encoder length must be equal to the one in bucket,"
-                             " %d != %d." % (len(encoder_inputs), encoder_size))
+            raise ValueError(
+                "Encoder length must be equal to the one in bucket,"
+                " %d != %d." %
+                (len(encoder_inputs), encoder_size))
         if len(decoder_inputs) != decoder_size:
-            raise ValueError("Decoder length must be equal to the one in bucket,"
-                             " %d != %d." % (len(decoder_inputs), decoder_size))
+            raise ValueError(
+                "Decoder length must be equal to the one in bucket,"
+                " %d != %d." %
+                (len(decoder_inputs), decoder_size))
         if len(target_weights) != decoder_size:
-            raise ValueError("Weights length must be equal to the one in bucket,"
-                             " %d != %d." % (len(target_weights), decoder_size))
+            raise ValueError(
+                "Weights length must be equal to the one in bucket,"
+                " %d != %d." %
+                (len(target_weights), decoder_size))
 
-        # Input feed: encoder inputs, decoder inputs, target_weights, as provided.
+        # Input feed: encoder inputs, decoder inputs, target_weights, as
+        # provided.
         input_feed = {}
         for l in xrange(encoder_size):
             input_feed[self.encoder_inputs[l].name] = encoder_inputs[l]
@@ -306,13 +336,16 @@ class Seq2SeqModel(object):
             input_feed[self.decoder_inputs[l].name] = decoder_inputs[l]
             input_feed[self.target_weights[l].name] = target_weights[l]
         if self.word_dropout_keep_prob < 1:
-            input_feed[self.replace_input.name] = np.full((self.batch_size), data_utils.UNK_ID, dtype=np.int32)
+            input_feed[self.replace_input.name] = np.full(
+                (self.batch_size), data_utils.UNK_ID, dtype=np.int32)
 
-        # Since our targets are decoder inputs shifted by one, we need one more.
+        # Since our targets are decoder inputs shifted by one, we need one
+        # more.
         last_target = self.decoder_inputs[decoder_size].name
         input_feed[last_target] = np.zeros([self.batch_size], dtype=np.int32)
         if not prob:
-            input_feed[self.logvars[bucket_id]] = np.full((self.batch_size, self.latent_dim), -800.0, dtype=np.float32)
+            input_feed[self.logvars[bucket_id]] = np.full(
+                (self.batch_size, self.latent_dim), -800.0, dtype=np.float32)
 
         # Output feed: depends on whether we do a backward step or not.
         if not forward_only:
@@ -321,23 +354,28 @@ class Seq2SeqModel(object):
                            self.losses[bucket_id],
                            self.KL_costs[bucket_id]]  # Loss for this batch.
         else:
-            output_feed = [self.losses[bucket_id], self.KL_costs[bucket_id]]  # Loss for this batch.
+            # Loss for this batch.
+            output_feed = [self.losses[bucket_id], self.KL_costs[bucket_id]]
             for l in xrange(decoder_size):  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
 
         outputs = session.run(output_feed, input_feed)
         if not forward_only:
-            return outputs[1], outputs[2], outputs[3], None  # Gradient norm, loss, KL divergence, no outputs.
+            # Gradient norm, loss, KL divergence, no outputs.
+            return outputs[1], outputs[2], outputs[3], None
         else:
-            return None, outputs[0], outputs[1], outputs[2:]  # no gradient norm, loss, KL divergence, outputs.
+            # no gradient norm, loss, KL divergence, outputs.
+            return None, outputs[0], outputs[1], outputs[2:]
 
     def encode_to_latent(self, session, encoder_inputs, bucket_id):
 
         # Check if the sizes match.
         encoder_size, _ = self.buckets[bucket_id]
         if len(encoder_inputs) != encoder_size:
-            raise ValueError("Encoder length must be equal to the one in bucket,"
-                             " %d != %d." % (len(encoder_inputs), encoder_size))
+            raise ValueError(
+                "Encoder length must be equal to the one in bucket,"
+                " %d != %d." %
+                (len(encoder_inputs), encoder_size))
 
         input_feed = {}
         for l in xrange(encoder_size):
@@ -348,7 +386,14 @@ class Seq2SeqModel(object):
 
         return means, logvars
 
-    def decode_from_latent(self, session, means, logvars, bucket_id, decoder_inputs, target_weights):
+    def decode_from_latent(
+            self,
+            session,
+            means,
+            logvars,
+            bucket_id,
+            decoder_inputs,
+            target_weights):
 
         _, decoder_size = self.buckets[bucket_id]
         # Input feed: means.
@@ -359,7 +404,8 @@ class Seq2SeqModel(object):
             input_feed[self.decoder_inputs[l].name] = decoder_inputs[l]
             input_feed[self.target_weights[l].name] = target_weights[l]
         if self.word_dropout_keep_prob < 1:
-            input_feed[self.replace_input.name] = np.full((self.batch_size), data_utils.UNK_ID, dtype=np.int32)
+            input_feed[self.replace_input.name] = np.full(
+                (self.batch_size), data_utils.UNK_ID, dtype=np.int32)
 
         last_target = self.decoder_inputs[decoder_size].name
         input_feed[last_target] = np.zeros([self.batch_size], dtype=np.int32)
@@ -396,7 +442,8 @@ class Seq2SeqModel(object):
             encoder_input, decoder_input = random.choice(data[bucket_id])
 
             # Encoder inputs are padded and then reversed.
-            encoder_pad = [data_utils.PAD_ID] * (encoder_size - len(encoder_input))
+            encoder_pad = [data_utils.PAD_ID] * \
+                (encoder_size - len(encoder_input))
             encoder_inputs.append(list(reversed(encoder_input + encoder_pad)))
 
             # Decoder inputs get an extra "GO" symbol, and are padded then.
@@ -413,7 +460,8 @@ class Seq2SeqModel(object):
                 np.array([encoder_inputs[batch_idx][length_idx]
                           for batch_idx in xrange(self.batch_size)], dtype=np.int32))
 
-        # Batch decoder inputs are re-indexed decoder_inputs, we create weights.
+        # Batch decoder inputs are re-indexed decoder_inputs, we create
+        # weights.
         for length_idx in xrange(decoder_size):
             batch_decoder_inputs.append(
                 np.array([decoder_inputs[batch_idx][length_idx]
@@ -423,7 +471,8 @@ class Seq2SeqModel(object):
             batch_weight = np.ones(self.batch_size, dtype=np.float32)
             for batch_idx in xrange(self.batch_size):
                 # We set weight to 0 if the corresponding target is a PAD symbol.
-                # The corresponding target is decoder_input shifted by 1 forward.
+                # The corresponding target is decoder_input shifted by 1
+                # forward.
                 if length_idx < decoder_size - 1:
                     target = decoder_inputs[batch_idx][length_idx + 1]
                 if length_idx == decoder_size - 1 or target == data_utils.PAD_ID:

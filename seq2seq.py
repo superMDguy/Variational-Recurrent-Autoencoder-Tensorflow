@@ -111,8 +111,14 @@ def _extract_argmax_and_embed(embedding, output_projection=None,
     return loop_function
 
 
-def rnn_decoder(decoder_inputs, initial_state, cell, word_dropout_keep_prob=1, replace_inp=None,
-                loop_function=None, scope=None):
+def rnn_decoder(
+        decoder_inputs,
+        initial_state,
+        cell,
+        word_dropout_keep_prob=1,
+        replace_inp=None,
+        loop_function=None,
+        scope=None):
     """RNN decoder for the sequence-to-sequence model.
 
     Args:
@@ -149,7 +155,9 @@ def rnn_decoder(decoder_inputs, initial_state, cell, word_dropout_keep_prob=1, r
             if loop_function is not None and prev is not None:
                 with variable_scope.variable_scope("loop_function", reuse=True):
                     if word_dropout_keep_prob < 1:
-                        inp = tf.cond(keep[i], lambda: loop_function(prev, i), lambda: replace_inp)
+                        inp = tf.cond(
+                            keep[i], lambda: loop_function(
+                                prev, i), lambda: replace_inp)
                     else:
                         inp = loop_function(prev, i)
             if i > 0:
@@ -198,7 +206,8 @@ def beam_rnn_decoder(decoder_inputs, initial_state, cell, loop_function=None,
         for i, inp in enumerate(decoder_inputs):
             if loop_function is not None and prev is not None:
                 with variable_scope.variable_scope("loop_function", reuse=True):
-                    inp = loop_function(prev, i, log_beam_probs, beam_path, beam_symbols)
+                    inp = loop_function(
+                        prev, i, log_beam_probs, beam_path, beam_symbols)
             if i > 0:
                 variable_scope.get_variable_scope().reuse_variables()
 
@@ -212,7 +221,8 @@ def beam_rnn_decoder(decoder_inputs, initial_state, cell, loop_function=None,
                 states = []
                 for kk in range(beam_size):
                     states.append(state)
-                state = tf.reshape(tf.concat(axis=0, values=states), [-1, state_size])
+                state = tf.reshape(
+                    tf.concat(axis=0, values=states), [-1, state_size])
 
             outputs.append(tf.argmax(nn_ops.xw_plus_b(
                 output, output_projection[0], output_projection[1]), axis=1))
@@ -277,18 +287,25 @@ def embedding_rnn_decoder(decoder_inputs,
     with variable_scope.variable_scope(scope or "embedding_rnn_decoder") as scope:
         if output_projection is not None:
             dtype = scope.dtype
-            proj_weights = ops.convert_to_tensor(output_projection[0], dtype=dtype)
-            proj_weights.get_shape().assert_is_compatible_with([None, num_symbols])
-            proj_biases = ops.convert_to_tensor(output_projection[1], dtype=dtype)
+            proj_weights = ops.convert_to_tensor(
+                output_projection[0], dtype=dtype)
+            proj_weights.get_shape().assert_is_compatible_with(
+                [None, num_symbols])
+            proj_biases = ops.convert_to_tensor(
+                output_projection[1], dtype=dtype)
             proj_biases.get_shape().assert_is_compatible_with([num_symbols])
 
         if not embedding:
-            embedding = variable_scope.get_variable("embedding", [num_symbols, embedding_size],
-                                                    initializer=weight_initializer())
+            embedding = variable_scope.get_variable(
+                "embedding", [num_symbols, embedding_size], initializer=weight_initializer())
 
         if beam_size > 1:
             loop_function = _extract_beam_search(
-                embedding, beam_size, num_symbols, embedding_size, output_projection,
+                embedding,
+                beam_size,
+                num_symbols,
+                embedding_size,
+                output_projection,
                 update_embedding_for_previous)
         else:
             loop_function = _extract_argmax_and_embed(
@@ -296,13 +313,25 @@ def embedding_rnn_decoder(decoder_inputs,
                 update_embedding_for_previous) if feed_previous else None
 
         emb_inp = [
-            embedding_ops.embedding_lookup(embedding, i) for i in decoder_inputs]
+            embedding_ops.embedding_lookup(
+                embedding,
+                i) for i in decoder_inputs]
         if beam_size > 1:
-            return beam_rnn_decoder(emb_inp, initial_state, cell, loop_function=loop_function,
-                                    output_projection=output_projection, beam_size=beam_size)
+            return beam_rnn_decoder(
+                emb_inp,
+                initial_state,
+                cell,
+                loop_function=loop_function,
+                output_projection=output_projection,
+                beam_size=beam_size)
 
-        return rnn_decoder(emb_inp, initial_state, cell, word_dropout_keep_prob, replace_input,
-                           loop_function=loop_function)
+        return rnn_decoder(
+            emb_inp,
+            initial_state,
+            cell,
+            word_dropout_keep_prob,
+            replace_input,
+            loop_function=loop_function)
 
 
 def embedding_attention_encoder(encoder_inputs,
@@ -365,7 +394,8 @@ def embedding_attention_encoder(encoder_inputs,
         encoder_outputs, encoder_state = rnn.rnn(
             encoder_cell, encoder_inputs, dtype=dtype)
 
-        # First calculate a concatenation of encoder outputs to put attention on.
+        # First calculate a concatenation of encoder outputs to put attention
+        # on.
         top_states = [array_ops.reshape(e, [-1, 1, cell.output_size])
                       for e in encoder_outputs]
         attention_states = array_ops.concat(1, top_states)
@@ -387,13 +417,18 @@ def embedding_encoder(encoder_inputs,
         dtype = scope.dtype
         # Encoder.
         if not embedding:
-            embedding = variable_scope.get_variable("embedding", [num_symbols, embedding_size],
-                                                    initializer=weight_initializer())
-        emb_inp = [embedding_ops.embedding_lookup(embedding, i) for i in encoder_inputs]
+            embedding = variable_scope.get_variable(
+                "embedding", [num_symbols, embedding_size], initializer=weight_initializer())
+        emb_inp = [
+            embedding_ops.embedding_lookup(
+                embedding,
+                i) for i in encoder_inputs]
         if bidirectional:
-            _, output_state_fw, output_state_bw = rnn.bidirectional_rnn(cell, cell, emb_inp,
-                                                                        dtype=dtype)
-            encoder_state = tf.concat(axis=1, values=[output_state_fw, output_state_bw])
+            _, output_state_fw, output_state_bw = rnn.bidirectional_rnn(
+                cell, cell, emb_inp, dtype=dtype)
+            encoder_state = tf.concat(
+                axis=1, values=[
+                    output_state_fw, output_state_bw])
         else:
             _, encoder_state = rnn.static_rnn(
                 cell, emb_inp, dtype=dtype)
@@ -423,8 +458,10 @@ def sequence_loss_by_example(logits, targets, weights,
       ValueError: If len(logits) is different from len(targets) or len(weights).
     """
     if len(targets) != len(logits) or len(weights) != len(logits):
-        raise ValueError("Lengths of logits, weights, and targets must be the same "
-                         "%d, %d, %d." % (len(logits), len(weights), len(targets)))
+        raise ValueError(
+            "Lengths of logits, weights, and targets must be the same "
+            "%d, %d, %d." %
+            (len(logits), len(weights), len(targets)))
     with ops.name_scope(name, "sequence_loss_by_example",
                         logits + targets + weights):
         log_perp_list = []
@@ -442,7 +479,8 @@ def sequence_loss_by_example(logits, targets, weights,
         log_perps = math_ops.add_n(log_perp_list)
         if average_across_timesteps:
             total_size = math_ops.add_n(weights)
-            total_size += 1e-12  # Just to avoid division by 0 for all-0 weights.
+            # Just to avoid division by 0 for all-0 weights.
+            total_size += 1e-12
             log_perps /= total_size
     return log_perps
 
@@ -550,9 +588,17 @@ def model_with_buckets(encoder_inputs, decoder_inputs, targets, weights,
     return outputs, losses
 
 
-def autoencoder_with_buckets(encoder_inputs, decoder_inputs, targets, weights,
-                             buckets, encoder, decoder, softmax_loss_function=None,
-                             per_example_loss=False, name=None):
+def autoencoder_with_buckets(
+        encoder_inputs,
+        decoder_inputs,
+        targets,
+        weights,
+        buckets,
+        encoder,
+        decoder,
+        softmax_loss_function=None,
+        per_example_loss=False,
+        name=None):
     """Create a sequence-to-sequence model with support for bucketing.
 
     The seq2seq argument is a function that defines a sequence-to-sequence model,
@@ -605,7 +651,8 @@ def autoencoder_with_buckets(encoder_inputs, decoder_inputs, targets, weights,
             with variable_scope.variable_scope(variable_scope.get_variable_scope(),
                                                reuse=True if j > 0 else None):
                 encoder_state = encoder(encoder_inputs[:bucket[0]])
-                bucket_outputs, _ = decoder(encoder_state, decoder_inputs[:bucket[1]])
+                bucket_outputs, _ = decoder(
+                    encoder_state, decoder_inputs[:bucket[1]])
                 outputs.append(bucket_outputs)
                 if per_example_loss:
                     losses.append(sequence_loss_by_example(
@@ -650,8 +697,9 @@ def sample(means,
             z = posterior.sample
 
             logqs = posterior.logps(z)
-            L = tf.get_variable("inverse_cholesky", [latent_dim, latent_dim], dtype=dtype,
-                                initializer=tf.zeros_initializer())
+            L = tf.get_variable(
+                "inverse_cholesky", [
+                    latent_dim, latent_dim], dtype=dtype, initializer=tf.zeros_initializer())
             diag_one = tf.ones([latent_dim], dtype=dtype)
             L = tf.matrix_set_diag(L, diag_one)
             mask = np.tril(np.ones([latent_dim, latent_dim]))
@@ -688,7 +736,8 @@ def encoder_to_latent(encoder_state,
     if use_lstm:
         concat_state_size *= 2
         if num_layers > 1:
-            encoder_state = list(map(lambda state_tuple: tf.concat(axis=1, values=state_tuple), encoder_state))
+            encoder_state = list(map(lambda state_tuple: tf.concat(
+                axis=1, values=state_tuple), encoder_state))
         else:
             encoder_state = tf.concat(axis=1, values=encoder_state)
     if num_layers > 1:
@@ -698,7 +747,8 @@ def encoder_to_latent(encoder_state,
                             dtype=dtype)
         b = tf.get_variable("b", [2 * latent_dim], dtype=dtype)
         mean_logvar = prelu(tf.matmul(encoder_state, w) + b)
-        mean, logvar = tf.split(axis=1, num_or_size_splits=2, value=mean_logvar)
+        mean, logvar = tf.split(
+            axis=1, num_or_size_splits=2, value=mean_logvar)
 
     return mean, logvar
 
@@ -719,21 +769,44 @@ def latent_to_decoder(latent_vector,
         b = tf.get_variable("b", [concat_state_size], dtype=dtype)
         decoder_initial_state = prelu(tf.matmul(latent_vector, w) + b)
     if num_layers > 1:
-        decoder_initial_state = tuple(tf.split(axis=1, num_or_size_splits=num_layers, value=decoder_initial_state))
+        decoder_initial_state = tuple(
+            tf.split(
+                axis=1,
+                num_or_size_splits=num_layers,
+                value=decoder_initial_state))
         if use_lstm:
-            decoder_initial_state = [tuple(tf.split(axis=1, num_or_size_splits=2, value=single_layer_state)) for
-                                     single_layer_state in decoder_initial_state]
+            decoder_initial_state = [
+                tuple(
+                    tf.split(
+                        axis=1,
+                        num_or_size_splits=2,
+                        value=single_layer_state)) for single_layer_state in decoder_initial_state]
     elif use_lstm:
-        decoder_initial_state = tuple(tf.split(axis=1, num_or_size_splits=2, value=decoder_initial_state))
+        decoder_initial_state = tuple(
+            tf.split(
+                axis=1,
+                num_or_size_splits=2,
+                value=decoder_initial_state))
 
     return decoder_initial_state
 
 
-def variational_autoencoder_with_buckets(encoder_inputs, decoder_inputs, targets, weights,
-                                         buckets, encoder, decoder, enc_latent, latent_dec, sample, kl_f,
-                                         probabilistic=False,
-                                         softmax_loss_function=None,
-                                         per_example_loss=False, name=None):
+def variational_autoencoder_with_buckets(
+        encoder_inputs,
+        decoder_inputs,
+        targets,
+        weights,
+        buckets,
+        encoder,
+        decoder,
+        enc_latent,
+        latent_dec,
+        sample,
+        kl_f,
+        probabilistic=False,
+        softmax_loss_function=None,
+        per_example_loss=False,
+        name=None):
     """Create a sequence-to-sequence model with support for bucketing.
 
     The seq2seq argument is a function that defines a sequence-to-sequence model,
@@ -793,11 +866,17 @@ def variational_autoencoder_with_buckets(encoder_inputs, decoder_inputs, targets
                 else:
                     latent_vector = mean
                 decoder_initial_state = latent_dec(latent_vector)
-                bucket_outputs, _ = decoder(decoder_initial_state, decoder_inputs[:bucket[1]])
+                bucket_outputs, _ = decoder(
+                    decoder_initial_state, decoder_inputs[:bucket[1]])
                 outputs.append(bucket_outputs)
                 total_size = math_ops.add_n(weights[:bucket[1]])
                 total_size += 1e-12
-                KL_divergences.append(tf.reduce_mean(kl_f(mean, logvar) / total_size))
+                KL_divergences.append(
+                    tf.reduce_mean(
+                        kl_f(
+                            mean,
+                            logvar) /
+                        total_size))
                 if per_example_loss:
                     losses.append(sequence_loss_by_example(
                         outputs[-1], targets[:bucket[1]], weights[:bucket[1]],
@@ -861,7 +940,8 @@ def variational_decoder_with_buckets(means, logvars, decoder_inputs,
                 latent_vector, kl_obj, kl_cost = sample(means[j], logvars[j])
                 decoder_initial_state = latent_dec(latent_vector)
 
-                bucket_outputs, _ = decoder(decoder_initial_state, decoder_inputs[:bucket[1]])
+                bucket_outputs, _ = decoder(
+                    decoder_initial_state, decoder_inputs[:bucket[1]])
                 outputs.append(bucket_outputs)
                 total_size = math_ops.add_n(weights[:bucket[1]])
                 total_size += 1e-12
@@ -879,11 +959,21 @@ def variational_decoder_with_buckets(means, logvars, decoder_inputs,
     return outputs, losses, KL_objs, KL_costs
 
 
-def variational_beam_decoder_with_buckets(means, logvars, decoder_inputs,
-                                          targets, weights,
-                                          buckets, decoder, latent_dec, kl_f, sample, iaf=False,
-                                          softmax_loss_function=None,
-                                          per_example_loss=False, name=None):
+def variational_beam_decoder_with_buckets(
+        means,
+        logvars,
+        decoder_inputs,
+        targets,
+        weights,
+        buckets,
+        decoder,
+        latent_dec,
+        kl_f,
+        sample,
+        iaf=False,
+        softmax_loss_function=None,
+        per_example_loss=False,
+        name=None):
     """Create a sequence-to-sequence model with support for bucketing.
     """
     if len(targets) < buckets[-1][1]:
@@ -906,7 +996,8 @@ def variational_beam_decoder_with_buckets(means, logvars, decoder_inputs,
                 latent_vector, kl_cost = sample(means[j], logvars[j])
                 decoder_initial_state = latent_dec(latent_vector)
 
-                bucket_outputs, _, beam_path, beam_symbol = decoder(decoder_initial_state, decoder_inputs[:bucket[1]])
+                bucket_outputs, _, beam_path, beam_symbol = decoder(
+                    decoder_initial_state, decoder_inputs[:bucket[1]])
                 outputs.append(bucket_outputs)
                 beam_paths.append(beam_path)
                 beam_symbols.append(beam_symbol)

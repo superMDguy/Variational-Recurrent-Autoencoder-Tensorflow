@@ -48,16 +48,29 @@ import seq2seq_model
 
 tf.app.flags.DEFINE_string("model_dir", "models", "directory of the model.")
 tf.app.flags.DEFINE_boolean("new", True, "whether this is a new model or not.")
-tf.app.flags.DEFINE_string("do", "train", "what to do. accepts train, interpolate, sample, and decode.")
-tf.app.flags.DEFINE_string("input", None, "input filename for reconstruct sample, and interpolate.")
-tf.app.flags.DEFINE_string("output", None, "output filename for reconstruct sample, and interpolate.")
+tf.app.flags.DEFINE_string(
+    "do",
+    "train",
+    "what to do. accepts train, interpolate, sample, and decode.")
+tf.app.flags.DEFINE_string(
+    "input",
+    None,
+    "input filename for reconstruct sample, and interpolate.")
+tf.app.flags.DEFINE_string(
+    "output",
+    None,
+    "output filename for reconstruct sample, and interpolate.")
 
 FLAGS = tf.app.flags.FLAGS
 
 
 def prelu(x):
     with tf.variable_scope("prelu") as scope:
-        alphas = tf.get_variable("alphas", [], initializer=tf.constant_initializer(0.0), dtype=tf.float32)
+        alphas = tf.get_variable(
+            "alphas",
+            [],
+            initializer=tf.constant_initializer(0.0),
+            dtype=tf.float32)
         return tf.nn.relu(x) - tf.multiply(alphas, tf.nn.relu(-x))
 
 
@@ -84,8 +97,10 @@ def read_data(path, config, max_size=None):
             source_ids = [int(x) for x in nextLine.split()]
             target_ids = source_ids
             target_ids.append(data_utils.EOS_ID)
-            for bucket_id, (source_size, target_size) in enumerate(config.buckets):
-                if len(source_ids) < source_size and len(target_ids) < target_size:
+            for bucket_id, (source_size, target_size) in enumerate(
+                    config.buckets):
+                if len(source_ids) < source_size and len(
+                        target_ids) < target_size:
                     data_set[bucket_id].append([source_ids, target_ids])
                     break
             nextLine = f.readline()
@@ -132,7 +147,8 @@ def create_model(session, config, forward_only):
         iaf=config.iaf,
         dtype=dtype)
     ckpt = tf.train.get_checkpoint_state(FLAGS.model_dir)
-    if not FLAGS.new and ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
+    if not FLAGS.new and ckpt and tf.train.checkpoint_exists(
+            ckpt.model_checkpoint_path):
         print("Reading model parameters from %s" % ckpt.model_checkpoint_path)
         model.saver.restore(session, ckpt.model_checkpoint_path)
     else:
@@ -167,21 +183,25 @@ def load_embeddings(word_index, config):
 def train(config):
     # Prepare WMT data.
     print("Preparing WMT data in %s" % config.data_dir)
-    train, dev, _ = data_utils.prepare_wmt_data(config.data_dir, config.vocab_size)
+    train, dev, _ = data_utils.prepare_wmt_data(
+        config.data_dir, config.vocab_size)
 
     with tf.Session() as sess:
         if not os.path.exists(FLAGS.model_dir):
             os.makedirs(FLAGS.model_dir)
 
         # Create model.
-        print("Creating %d layers of %d units." % (config.num_layers, config.size))
+        print("Creating %d layers of %d units." %
+              (config.num_layers, config.size))
         model = create_model(sess, config, False)
 
         if not config.probabilistic:
             self.kl_rate_update(0.0)
 
-        train_writer = tf.summary.FileWriter(os.path.join(FLAGS.model_dir, "train"), graph=sess.graph)
-        dev_writer = tf.summary.FileWriter(os.path.join(FLAGS.model_dir, "test"), graph=sess.graph)
+        train_writer = tf.summary.FileWriter(os.path.join(
+            FLAGS.model_dir, "train"), graph=sess.graph)
+        dev_writer = tf.summary.FileWriter(os.path.join(
+            FLAGS.model_dir, "test"), graph=sess.graph)
 
         # Read data into buckets and compute their sizes.
         print("Reading development and training data (limit: %d)."
@@ -189,7 +209,8 @@ def train(config):
 
         dev_set = read_data(dev, config)
         train_set = read_data(train, config, config.max_train_data_size)
-        train_bucket_sizes = [len(train_set[b]) for b in xrange(len(config.buckets))]
+        train_bucket_sizes = [len(train_set[b])
+                              for b in xrange(len(config.buckets))]
         train_total_size = float(sum(train_bucket_sizes))
 
         # A bucket scale is a list of increasing numbers from 0 to 1 that we'll use
@@ -199,7 +220,10 @@ def train(config):
                                for i in xrange(len(train_bucket_sizes))]
 
         # Load vocabularies.
-        vocab_path = os.path.join(config.data_dir, "vocab%d" % config.vocab_size)
+        vocab_path = os.path.join(
+            config.data_dir,
+            "vocab%d" %
+            config.vocab_size)
         vocab, _ = data_utils.initialize_vocabulary(vocab_path)
 
         if config.embeddings_path.strip() is not '':
@@ -225,63 +249,95 @@ def train(config):
             overall_start_time = time.time()
             while True:
                 # Choose a bucket according to data distribution. We pick a random number
-                # in [0, 1] and use the corresponding interval in train_buckets_scale.
+                # in [0, 1] and use the corresponding interval in
+                # train_buckets_scale.
                 random_number_01 = np.random.random_sample()
                 bucket_id = min([i for i in xrange(len(train_buckets_scale))
                                  if train_buckets_scale[i] > random_number_01])
-    
+
                 # Get a batch and make a step.
                 start_time = time.time()
                 encoder_inputs, decoder_inputs, target_weights = model.get_batch(
                     train_set, bucket_id)
-                _, step_loss, step_KL_loss, _ = model.step(sess, encoder_inputs, decoder_inputs,
-                                                           target_weights, bucket_id, False, config.probabilistic)
-    
-                if config.anneal and model.global_step.eval() > config.kl_rate_rise_time and model.kl_rate < 1:
+                _, step_loss, step_KL_loss, _ = model.step(
+                    sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, False, config.probabilistic)
+
+                if config.anneal and model.global_step.eval(
+                ) > config.kl_rate_rise_time and model.kl_rate < 1:
                     new_kl_rate = model.kl_rate.eval() + config.kl_rate_rise_factor
-                    sess.run(model.kl_rate_update, feed_dict={'new_kl_rate': new_kl_rate})
-    
-                step_time += (time.time() - start_time) / config.steps_per_checkpoint
+                    sess.run(
+                        model.kl_rate_update, feed_dict={
+                            'new_kl_rate': new_kl_rate})
+
+                step_time += (time.time() - start_time) / \
+                    config.steps_per_checkpoint
                 step_loss_summaries.append(
-                    tf.Summary(value=[tf.Summary.Value(tag="step loss", simple_value=float(step_loss))]))
+                    tf.Summary(
+                        value=[
+                            tf.Summary.Value(
+                                tag="step loss",
+                                simple_value=float(step_loss))]))
                 step_KL_loss_summaries.append(
-                    tf.Summary(value=[tf.Summary.Value(tag="KL step loss", simple_value=float(step_KL_loss))]))
+                    tf.Summary(
+                        value=[
+                            tf.Summary.Value(
+                                tag="KL step loss",
+                                simple_value=float(step_KL_loss))]))
                 loss += step_loss / config.steps_per_checkpoint
                 KL_loss += step_KL_loss / config.steps_per_checkpoint
                 current_step = model.global_step.eval()
-    
-                # Once in a while, we save checkpoint, print statistics, and run evals.
+
+                # Once in a while, we save checkpoint, print statistics, and
+                # run evals.
                 if current_step % config.steps_per_checkpoint == 0:
                     # Print statistics for the previous epoch.
-                    perplexity = math.exp(float(loss)) if loss < 300 else float("inf")
-                    print("global step %d learning rate %.4f step-time %.2f perplexity "
-                          "%.2f" % (model.global_step.eval(), model.learning_rate.eval(),
-                                    step_time, perplexity))
-    
-                    print("global step %d learning rate %.4f step-time %.2f KL divergence "
-                          "%.2f" % (model.global_step.eval(), model.learning_rate.eval(),
-                                    step_time, KL_loss))
+                    perplexity = math.exp(
+                        float(loss)) if loss < 300 else float("inf")
+                    print(
+                        "global step %d learning rate %.4f step-time %.2f perplexity "
+                        "%.2f" %
+                        (model.global_step.eval(),
+                         model.learning_rate.eval(),
+                         step_time,
+                         perplexity))
+
+                    print(
+                        "global step %d learning rate %.4f step-time %.2f KL divergence "
+                        "%.2f" %
+                        (model.global_step.eval(), model.learning_rate.eval(), step_time, KL_loss))
                     wall_time = time.time() - overall_start_time
                     print("time passed: {0}".format(wall_time))
-    
+
                     # Add perplexity, KL divergence to summary and stats.
-                    perp_summary = tf.Summary(value=[tf.Summary.Value(tag="train perplexity", simple_value=perplexity)])
+                    perp_summary = tf.Summary(
+                        value=[
+                            tf.Summary.Value(
+                                tag="train perplexity",
+                                simple_value=perplexity)])
                     train_writer.add_summary(perp_summary, current_step)
-                    KL_loss_summary = tf.Summary(value=[tf.Summary.Value(tag="KL divergence", simple_value=KL_loss)])
+                    KL_loss_summary = tf.Summary(
+                        value=[
+                            tf.Summary.Value(
+                                tag="KL divergence",
+                                simple_value=KL_loss)])
                     train_writer.add_summary(KL_loss_summary, current_step)
                     for i, summary in enumerate(step_loss_summaries):
-                        train_writer.add_summary(summary, current_step - 200 + i)
+                        train_writer.add_summary(
+                            summary, current_step - 200 + i)
                     step_loss_summaries = []
                     for i, summary in enumerate(step_KL_loss_summaries):
-                        train_writer.add_summary(summary, current_step - 200 + i)
+                        train_writer.add_summary(
+                            summary, current_step - 200 + i)
                     step_KL_loss_summaries = []
-    
+
                     # Save checkpoint and zero timer and loss.
-                    model_name = os.path.basename(os.path.normpath(FLAGS.model_dir)) + ".ckpt"
+                    model_name = os.path.basename(
+                        os.path.normpath(FLAGS.model_dir)) + ".ckpt"
                     checkpoint_path = os.path.join(FLAGS.model_dir, model_name)
-                    model.saver.save(sess, checkpoint_path, global_step=model.global_step)
+                    model.saver.save(
+                        sess, checkpoint_path, global_step=model.global_step)
                     step_time, loss, KL_loss = 0.0, 0.0, 0.0
-    
+
                     # Run evals on development set and print their perplexity.
                     eval_losses = []
                     eval_KL_losses = []
@@ -293,32 +349,43 @@ def train(config):
                         eval_bucket_num += 1
                         encoder_inputs, decoder_inputs, target_weights = model.get_batch(
                             dev_set, bucket_id)
-                        _, eval_loss, eval_KL_loss, _ = model.step(sess, encoder_inputs, decoder_inputs,
-                                                                   target_weights, bucket_id, True, config.probabilistic)
+                        _, eval_loss, eval_KL_loss, _ = model.step(
+                            sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, True, config.probabilistic)
                         eval_losses.append(float(eval_loss))
                         eval_KL_losses.append(float(eval_KL_loss))
-                        eval_ppx = math.exp(float(eval_loss)) if eval_loss < 300 else float(
-                            "inf")
-                        print("  eval: bucket %d perplexity %.2f" % (bucket_id, eval_ppx))
-    
-                        eval_perp_summary = tf.Summary(value=[
-                            tf.Summary.Value(tag="eval perplexity for bucket {0}".format(bucket_id),
-                                             simple_value=eval_ppx)])
+                        eval_ppx = math.exp(
+                            float(eval_loss)) if eval_loss < 300 else float("inf")
+                        print(
+                            "  eval: bucket %d perplexity %.2f" %
+                            (bucket_id, eval_ppx))
+
+                        eval_perp_summary = tf.Summary(
+                            value=[
+                                tf.Summary.Value(
+                                    tag="eval perplexity for bucket {0}".format(bucket_id),
+                                    simple_value=eval_ppx)])
                         dev_writer.add_summary(eval_perp_summary, current_step)
-    
+
                     mean_eval_loss = sum(eval_losses) / float(eval_bucket_num)
-                    mean_eval_KL_loss = sum(eval_KL_losses) / float(eval_bucket_num)
+                    mean_eval_KL_loss = sum(
+                        eval_KL_losses) / float(eval_bucket_num)
                     mean_eval_ppx = math.exp(float(mean_eval_loss))
                     print("  eval: mean perplexity {0}".format(mean_eval_ppx))
-    
+
                     eval_loss_summary = tf.Summary(
-                        value=[tf.Summary.Value(tag="mean eval loss", simple_value=float(mean_eval_ppx))])
+                        value=[
+                            tf.Summary.Value(
+                                tag="mean eval loss",
+                                simple_value=float(mean_eval_ppx))])
                     dev_writer.add_summary(eval_loss_summary, current_step)
                     eval_KL_loss_summary = tf.Summary(
-                        value=[tf.Summary.Value(tag="mean eval loss", simple_value=float(mean_eval_KL_loss))])
+                        value=[
+                            tf.Summary.Value(
+                                tag="mean eval loss",
+                                simple_value=float(mean_eval_KL_loss))])
                     dev_writer.add_summary(eval_KL_loss_summary, current_step)
-    
-    
+
+
 def reconstruct(sess, model, config):
     model.batch_size = 1  # We decode one sentence at a time.
     model.probabilistic = config.probabilistic
@@ -348,8 +415,8 @@ def reconstruct(sess, model, config):
             {bucket_id: [(token_ids, [])]}, bucket_id)
 
         if beam_size > 1:
-            path, symbol, output_logits = model.step(sess, encoder_inputs, decoder_inputs,
-                                                     target_weights, bucket_id, True, config.probabilistic, beam_size)
+            path, symbol, output_logits = model.step(
+                sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, True, config.probabilistic, beam_size)
 
             k = output_logits[0]
             paths = []
@@ -372,9 +439,10 @@ def reconstruct(sess, model, config):
 
         else:
             # Get output logits for the sentence.
-            _, _, _, output_logits = model.step(sess, encoder_inputs, decoder_inputs,
-                                                target_weights, bucket_id, True, config.probabilistic)
-            # This is a greedy decoder - outputs are just argmaxes of output_logits.
+            _, _, _, output_logits = model.step(
+                sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, True, config.probabilistic)
+            # This is a greedy decoder - outputs are just argmaxes of
+            # output_logits.
             output = [int(np.argmax(logit, axis=1)) for logit in output_logits]
             # If there is an EOS symbol in outputs, cut them at that point.
             if data_utils.EOS_ID in output:
@@ -428,7 +496,8 @@ def decode(sess, model, config, means, logvars, bucket_id):
     for mean, logvar in zip(means, logvars):
         mean = mean.reshape(1, -1)
         logvar = logvar.reshape(1, -1)
-        output_logits = model.decode_from_latent(sess, mean, logvar, bucket_id, decoder_inputs, target_weights)
+        output_logits = model.decode_from_latent(
+            sess, mean, logvar, bucket_id, decoder_inputs, target_weights)
         output = [int(np.argmax(logit, axis=1)) for logit in output_logits]
         # If there is an EOS symbol in outputs, cut them at that point.
         if data_utils.EOS_ID in output:
@@ -460,8 +529,10 @@ def interpolate(sess, model, config, means, logvars, num_pts):
         raise ValueError("there should be two sentences when interpolating."
                          "number of setences: %d." % len(means))
     if num_pts < 3:
-        raise ValueError("there should be more than two points when interpolating."
-                         "number of points: %d." % num_pts)
+        raise ValueError(
+            "there should be more than two points when interpolating."
+            "number of points: %d." %
+            num_pts)
     pts = []
     for s, e in zip(means[0][0].tolist(), means[1][0].tolist()):
         pts.append(np.linspace(s, e, num_pts))
@@ -506,7 +577,8 @@ class Struct(object):
         if not self.__dict__.get("beam_size"):
             self.__dict__.update({"beam_size": 1})
         if self.__dict__.get("beam_size") > 1:
-            raise NotImplementedError("Beam search is still under implementation.")
+            raise NotImplementedError(
+                "Beam search is still under implementation.")
 
     def update(self, **entries):
         self.__dict__.update(entries)
@@ -518,7 +590,8 @@ def main(_):
 
     behavior = ["train", "interpolate", "reconstruct", "sample"]
     if FLAGS.do not in behavior:
-        raise ValueError("argument \"do\" is not one of the following: train, interpolate, decode or sample.")
+        raise ValueError(
+            "argument \"do\" is not one of the following: train, interpolate, decode or sample.")
 
     if FLAGS.do != "train":
         FLAGS.new = False

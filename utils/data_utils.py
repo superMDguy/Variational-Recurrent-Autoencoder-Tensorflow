@@ -77,8 +77,13 @@ def basic_tokenizer(sentence):
     return [w for w in words if w]
 
 
-def create_vocabulary(vocabulary_path, data_path, max_vocabulary_size, embedding_path,
-                      tokenizer=None, normalize_digits=True):
+def create_vocabulary(
+        vocabulary_path,
+        data_path,
+        max_vocabulary_size,
+        embedding_path,
+        tokenizer=None,
+        normalize_digits=True):
     """Create vocabulary file (if it does not exist yet) from data file.
 
     Data file is assumed to contain one sentence per line. Each sentence is
@@ -96,8 +101,12 @@ def create_vocabulary(vocabulary_path, data_path, max_vocabulary_size, embedding
       normalize_digits: Boolean; if true, all digits are replaced by 0s.
     """
     if not gfile.Exists(vocabulary_path) or not gfile.Exists(embedding_path):
-        print("Creating vocabulary %s from data %s" % (vocabulary_path, data_path))
-        print("Creating embedding file %s from data %s" % (embedding_path, data_path))
+        print(
+            "Creating vocabulary %s from data %s" %
+            (vocabulary_path, data_path))
+        print(
+            "Creating embedding file %s from data %s" %
+            (embedding_path, data_path))
         vocab = {}
         with gfile.GFile(data_path, mode="r") as f:
             counter = 0
@@ -105,14 +114,16 @@ def create_vocabulary(vocabulary_path, data_path, max_vocabulary_size, embedding
                 counter += 1
                 if counter % 100000 == 0:
                     print("  processing line %d" % counter)
-                tokens = tokenizer(line) if tokenizer else basic_tokenizer(line)
+                tokens = tokenizer(
+                    line) if tokenizer else basic_tokenizer(line)
                 for w in tokens:
                     word = _DIGIT_RE.sub("0", w) if normalize_digits else w
                     if word in vocab:
                         vocab[word] += 1
                     else:
                         vocab[word] = 1
-            vocab_list = _START_VOCAB + sorted(vocab, key=vocab.get, reverse=True)
+            vocab_list = _START_VOCAB + \
+                sorted(vocab, key=vocab.get, reverse=True)
             if len(vocab_list) > max_vocabulary_size:
                 vocab_list = vocab_list[:max_vocabulary_size]
             with gfile.GFile(vocabulary_path, mode="wb") as vocab_file:
@@ -209,7 +220,8 @@ def data_to_token_ids(data_path, target_path, vocabulary_path,
                         print("  tokenizing line %d" % counter)
                     token_ids = sentence_to_token_ids(line, vocab, tokenizer,
                                                       normalize_digits)
-                    tokens_file.write(" ".join([str(tok) for tok in token_ids]) + "\n")
+                    tokens_file.write(
+                        " ".join([str(tok) for tok in token_ids]) + "\n")
 
 
 def prepare_wmt_data(data_dir, vocabulary_size, tokenizer=None):
@@ -219,9 +231,8 @@ def prepare_wmt_data(data_dir, vocabulary_size, tokenizer=None):
 
     # Create vocabularies of the appropriate sizes.
     vocab_path = os.path.join(data_dir, "vocab%d" % vocabulary_size)
-    create_vocabulary(vocab_path, train_path, vocabulary_size,
-                      os.path.join(data_dir, "embedding{0}.tsv".format(vocabulary_size)),
-                      tokenizer)
+    create_vocabulary(vocab_path, train_path, vocabulary_size, os.path.join(
+        data_dir, "embedding{0}.tsv".format(vocabulary_size)), tokenizer)
 
     # Create token ids for the training data.
     train_ids_path = train_path + (".ids%d" % vocabulary_size)
